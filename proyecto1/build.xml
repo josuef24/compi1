@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- You may freely edit this file. See commented blocks below for -->
+<!-- some examples of how to customize the build. -->
+<!-- (If you delete it and reopen the project it will be recreated.) -->
+<!-- By default, only the Clean and Build commands use this build script. -->
+<!-- Commands such as Run, Debug, and Test only use this build script if -->
+<!-- the Compile on Save feature is turned off for the project. -->
+<!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
+<!-- in the project's Project Properties dialog box.-->
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="OLC1-Proyecto1" default="run" basedir=".">
+    <description>Proyecto OLC1 con JFlex/CUP</description>
+    
+    <!-- Propiedades -->
+    <property name="src.dir" value="src"/>
+    <property name="build.dir" value="build"/>
+    <property name="classes.dir" value="${build.dir}/classes"/>
+    <property name="lib.dir" value="lib"/>
+    
+    <!-- Crear directorios -->
+    <target name="init">
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${classes.dir}"/>
+        <mkdir dir="${src.dir}/olc1/proyecto1/infra/lexer"/>
+        <mkdir dir="${src.dir}/olc1/proyecto1/infra/parser"/>
+    </target>
+
+    <!-- Generar Scanner con JFlex -->
+    <target name="gen-lexer" depends="init">
+        <echo message="Generando lexer con JFlex..."/>
+        <java jar="${lib.dir}/jflex-full-1.9.1.jar" fork="true" failonerror="true">
+            <arg value="-d"/>
+            <arg value="${src.dir}"/>
+            <arg value="${src.dir}/olc1/proyecto1/infra/lexer/Scanner.flex"/>
+        </java>
+        <echo message="Lexer generado exitosamente"/>
+    </target>
+
+    <!-- Generar Parser con CUP -->
+    <target name="gen-parser" depends="init">
+        <echo message="Generando parser con CUP..."/>
+        <java jar="${lib.dir}/java-cup-11b.jar" fork="true" failonerror="true">
+            <arg value="-parser"/>
+            <arg value="Parser"/>
+            <arg value="-symbols"/>
+            <arg value="sym"/>
+            <arg value="-destdir"/>
+            <arg value="${src.dir}/olc1/proyecto1/infra/parser"/>
+            <arg value="${src.dir}/olc1/proyecto1/infra/parser/Parser.cup"/>
+        </java>
+        <echo message="Parser generado exitosamente"/>
+    </target>
+
+    <!-- Compilar Java -->
+    <target name="compile" depends="gen-lexer,gen-parser">
+        <echo message="Compilando código fuente..."/>
+        <javac srcdir="${src.dir}" 
+               destdir="${classes.dir}" 
+               includeantruntime="false"
+               encoding="UTF-8"
+               debug="true">
+            <classpath>
+                <fileset dir="${lib.dir}">
+                    <include name="**/*.jar"/>
+                </fileset>
+            </classpath>
+        </javac>
+        <echo message="Compilación completada"/>
+    </target>
+
+    <!-- Ejecutar aplicación -->
+    <target name="run" depends="compile">
+        <echo message="Ejecutando AutómataLab..."/>
+        <java classname="olc1.proyecto1.view.Cli" fork="true">
+            <classpath>
+                <pathelement path="${classes.dir}"/>
+                <fileset dir="${lib.dir}">
+                    <include name="**/*.jar"/>
+                </fileset>
+            </classpath>
+            <arg value="entrada.txt"/>
+        </java>
+    </target>
+    
+    <!-- Generar JAR ejecutable -->
+    <target name="jar" depends="compile">
+        <echo message="Generando archivo JAR..."/>
+        <jar destfile="${build.dir}/AutomataLab.jar">
+            <fileset dir="${classes.dir}"/>
+            <zipgroupfileset dir="${lib.dir}">
+                <include name="**/*.jar"/>
+            </zipgroupfileset>
+            <manifest>
+                <attribute name="Main-Class" value="olc1.proyecto1.view.Cli"/>
+            </manifest>
+        </jar>
+        <echo message="JAR generado: ${build.dir}/AutomataLab.jar"/>
+    </target>
+
+    <!-- Limpiar archivos generados -->
+    <target name="clean">
+        <echo message="Limpiando archivos generados..."/>
+        <delete dir="${build.dir}"/>
+        <delete file="${src.dir}/olc1/proyecto1/infra/lexer/Yylex.java"/>
+        <delete file="${src.dir}/olc1/proyecto1/infra/parser/Parser.java"/>
+        <delete file="${src.dir}/olc1/proyecto1/infra/parser/sym.java"/>
+    </target>
+    
+    <!-- Compilación completa desde cero -->
+    <target name="rebuild" depends="clean,compile"/>
+    
+</project>

@@ -1,0 +1,51 @@
+/* Archivo: src/analizadores/Parser.cup */
+package analizadores;
+import java_cup.runtime.Symbol;
+
+parser code {:
+    @Override
+    public void report_error(String message, Object info) {
+        Symbol s = (Symbol) info;
+        System.err.println(
+            "[CUP] Error sintáctico cerca de línea "
+            + (s != null ? (s.left + 1) : "?") + ": " + message
+        );
+    }
+    @Override
+    public void syntax_error(Symbol s) {
+        System.err.println(
+            "[CUP] Error sintáctico en línea "
+            + (s != null ? (s.left + 1) : "?")
+        );
+    }
+:}
+
+/* Terminales */
+terminal String ID, STRING, VER_AUTOMATAS, DESC;
+terminal LPAREN, RPAREN, COMMA, SEMI;
+
+/* No terminales */
+non terminal Object Programa;
+non terminal Object Instrucciones, Instruccion;
+non terminal Object Funcion;
+
+/* Precedencias */
+
+/* Gramática */
+Programa ::= Instrucciones
+           ;
+
+Instrucciones ::= Instrucciones Instruccion
+                | Instruccion
+                ;
+
+Instruccion ::= Funcion SEMI
+              ;
+
+Funcion ::= VER_AUTOMATAS LPAREN RPAREN
+            {: System.out.println(">> verAutomatas()"); :}
+          | DESC LPAREN ID:nombre RPAREN
+            {: System.out.println(">> desc(" + nombre + ")"); :}
+          | ID:fn LPAREN STRING:cad RPAREN
+            {: System.out.println(">> " + fn + "(\"" + cad + "\")"); :}
+          ;
