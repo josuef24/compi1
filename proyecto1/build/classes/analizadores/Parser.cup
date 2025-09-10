@@ -1,51 +1,154 @@
-/* Archivo: src/analizadores/Parser.cup */
 package analizadores;
-import java_cup.runtime.Symbol;
+
+import java.util.*;
+import servicios.AutomataRegistry;
+import modelo.*;
 
 parser code {:
-    @Override
-    public void report_error(String message, Object info) {
-        Symbol s = (Symbol) info;
-        System.err.println(
-            "[CUP] Error sintáctico cerca de línea "
-            + (s != null ? (s.left + 1) : "?") + ": " + message
-        );
-    }
-    @Override
-    public void syntax_error(Symbol s) {
-        System.err.println(
-            "[CUP] Error sintáctico en línea "
-            + (s != null ? (s.left + 1) : "?")
-        );
-    }
-:}
+  public void syntax_error(java_cup.runtime.Symbol cur_token){
+    System.err.println("Error sintáctico en línea "+cur_token.left+", col "+cur_token.right);
+  }
+:};
 
-/* Terminales */
-terminal String ID, STRING, VER_AUTOMATAS, DESC;
-terminal LPAREN, RPAREN, COMMA, SEMI;
+terminal              LPAR, RPAR, LBRACE, RBRACE, COMMA, COLON, SEMI, OR, ARROW, EQ, LT, GT, LT_SLASH;
+terminal              TRANSICIONES, NOMBRE, KAFD, KAP, N, T, I, A, P, VER, DESC, LAMBDA, HASH;
+terminal String       ID, STRING, SYM;
+terminal              EOF, ERROR;
 
-/* No terminales */
-non terminal Object Programa;
-non terminal Object Instrucciones, Instruccion;
-non terminal Object Funcion;
+non terminal          inicio, sentencias, sentencia;
+non terminal          definicion_afd, definicion_ap;
+non terminal String   nombre_auto, id, simb;
+non terminal List     lista_ids, lista_simbs;
+non terminal List     lista_trans_afd, lista_trans_ap, alternativas_ap;
 
-/* Precedencias */
+precedence left OR;
 
-/* Gramática */
-Programa ::= Instrucciones
-           ;
+start with inicio;
 
-Instrucciones ::= Instrucciones Instruccion
-                | Instruccion
-                ;
+inicio ::= sentencias EOF
+        | EOF
+        ;
 
-Instruccion ::= Funcion SEMI
+sentencias ::= sentencias sentencia
+             | sentencia
+             ;
+
+sentencia ::=
+      definicion_afd
+    | definicion_ap
+    | VER LPAR RPAR SEMI         {: AutomataRegistry.listar(); :}
+    | DESC LPAR id RPAR SEMI     {: AutomataRegistry.desc($3); :}
+    | id LPAR STRING RPAR SEMI   {: AutomataRegistry.validar($1, strip($3)); :}
+    ;
+
+id ::= ID        {: RESULT = $1; :};
+
+simb ::= ID      {: RESULT = $1; :}
+       | SYM     {: RESULT = $1; :}
+       | LAMBDA  {: RESULT = "$"; :}
+       | HASH    {: RESULT = "#"; :}
+       ;
+
+/* ---------- AFD ---------- */
+definicion_afd ::=
+  LT KAFD NOMBRE EQ STRING GT
+    secciones_afd
+  LT_SLASH KAFD GT
+  {:
+     String nombre = strip($5);
+     Map<String, Set<String>> sets = (Map<String, Set<String>>)$7.get(0);
+     List<AFD.Tr> trans = (List<AFD.Tr>)$7.get(1);
+     AFD afd = new AFD(nombre, sets.get("N"), sets.get("T"), one(sets,"I"), sets.get("A"), trans);
+     AutomataRegistry.add(afd);
+  :}
+  ;
+
+non terminal List secciones_afd;
+secciones_afd ::=
+    conjuntoN conjuntoT conjuntoI conjuntoA trans_afd
+    {:
+      Map<String, Set<String>> sets = new HashMap<>();
+      sets.put("N",(Set<String>)$1); sets.put("T",(Set<String>)$2);
+      sets.put("I",(Set<String>)$3); sets.put("A",(Set<String>)$4);
+      List<Object> pack = new ArrayList<>();
+      pack.add(sets); pack.add($5);
+      RESULT = pack;
+    :}
+    ;
+
+non terminal Set conjuntoN, conjuntoT, conjuntoI, conjuntoA, conjuntoP;
+conjuntoN ::= N EQ LBRACE lista_ids RBRACE SEMI   {: RESULT = new HashSet<>($4); :};
+conjuntoT ::= T EQ LBRACE lista_simbs RBRACE SEMI {: RESULT = new HashSet<>($4); :};
+conjuntoI ::= I EQ LBRACE lista_ids RBRACE SEMI   {: RESULT = new HashSet<>($4); :};
+conjuntoA ::= A EQ LBRACE lista_ids RBRACE SEMI   {: RESULT = new HashSet<>($4); :};
+
+/* Transiciones AFD: S -> 1, A | 0, B ; */
+non terminal List trans_afd, trans_afd_linea, alternativas_afd;
+trans_afd ::= TRANSICIONES trans_afd_linea  {: RESULT = $2; :};
+
+trans_afd_linea ::=
+   lista_alt_afd SEMI                 {: RESULT = $1; :}
+ | trans_afd_linea lista_alt_afd SEMI {: $1.addAll($2); RESULT = $1; :}
+ ;
+
+non terminal List lista_alt_afd;
+lista_alt_afd ::=
+   id ARROW simb COMMA id
+   {:
+      List<AFD.Tr> l=new ArrayList<>();
+      l.add(new AFD.Tr($1,$3,$5));
+      RESULT=l;
+   :}
+ | lista_alt_afd OR id ARROW simb COMMA id
+   {:
+      ((List) $1).add(new AFD.Tr($3,$5,$7)); RESULT=$1;
+   :}
+ ;
+
+/* ---------- AP ---------- */
+definicion_ap ::=
+  LT KAP NOMBRE EQ STRING GT
+    conjuntoN conjuntoT conjuntoP conjuntoI conjuntoA trans_ap
+  LT_SLASH KAP GT
+  {:
+     String nombre = strip($5);
+     AP ap = new AP(nombre,(Set<String>)$7,(Set<String>)$8,(Set<String>)$9,(Set<String>)$10,(Set<String>)$11,(List<AP.Tr>)$12);
+     AutomataRegistry.add(ap);
+  :}
+  ;
+
+conjuntoP ::= P EQ LBRACE lista_simbs RBRACE SEMI {: RESULT = new HashSet<>($4); :};
+
+/* Transiciones AP: A (a) -> ($), B : (a) | ... ; */
+trans_ap ::= TRANSICIONES alternativas_ap SEMI {: RESULT = $2; :};
+
+alternativas_ap ::=
+   origen:ID LPAR simb RPAR ARROW LPAR simb RPAR COMMA dest:ID COLON LPAR simb RPAR
+   {:
+     List<AP.Tr> l=new ArrayList<>();
+     l.add(new AP.Tr($origen, $3, $7, $dest, $11));
+     RESULT = l;
+   :}
+ | alternativas_ap OR ID LPAR simb RPAR ARROW LPAR simb RPAR COMMA ID COLON LPAR simb RPAR
+   {:
+     ((List)$1).add(new AP.Tr($3,$5,$9,$11,$15)); RESULT=$1;
+   :}
+ ;
+
+/* ---------- listas ---------- */
+lista_ids   ::= id                      {: List<String> l=new ArrayList<>(); l.add($1); RESULT=l; :}
+              | lista_ids COMMA id      {: $1.add($3); RESULT=$1; :}
               ;
 
-Funcion ::= VER_AUTOMATAS LPAREN RPAREN
-            {: System.out.println(">> verAutomatas()"); :}
-          | DESC LPAREN ID:nombre RPAREN
-            {: System.out.println(">> desc(" + nombre + ")"); :}
-          | ID:fn LPAREN STRING:cad RPAREN
-            {: System.out.println(">> " + fn + "(\"" + cad + "\")"); :}
-          ;
+lista_simbs ::= simb                    {: List<String> l=new ArrayList<>(); l.add($1); RESULT=l; :}
+              | lista_simbs COMMA simb  {: $1.add($3); RESULT=$1; :}
+              ;
+
+/* ---------- helpers ---------- */
+parser code {:
+  private static String strip(String s){ return s.replaceAll("^\"|\"$", ""); }
+  private static String one(Map<String,Set<String>> m, String k){
+    if(m.get(k).size()!=1) throw new RuntimeException("El conjunto "+k+" debe tener 1 elemento");
+    return m.get(k).iterator().next();
+  }
+:};
