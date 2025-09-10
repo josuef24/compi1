@@ -8,7 +8,7 @@ import modelo.*;
 terminal LPAR, RPAR, LBRACE, RBRACE, COMMA, COLON, SEMI, OR, ARROW, EQ, LT, GT, LT_SLASH;
 terminal TRANSICIONES, NOMBRE, KAFD, KAP, N, T, I, A, P, VER, DESC, LAMBDA, HASH;
 terminal String ID, STRING, SYM;
-terminal EOF, ERROR;
+terminal ERROR;
 
 /* Símbolos no terminales */
 non terminal programa, lista_sentencias, sentencia;

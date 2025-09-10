@@ -3,10 +3,12 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package view;
+import analizadores.Lexer;
 import java.nio.file.*; 
 import java.io.*; 
 import analizadores.*; 
 import java_cup.runtime.*;
+import javax.swing.text.html.parser.Parser;
 
 public class Cli {
   public static void main(String[] args) throws Exception {
