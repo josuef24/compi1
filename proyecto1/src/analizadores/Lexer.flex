@@ -26,7 +26,7 @@ STRING   = \"([^\"\\]|\\.)*\"
 %%
 // --- Ignorar comentarios y espacios ---
 "//".*                         { /* ignore */ }
-"/*"([^*]|\*+[^/])*\*+ "/"     { /* ignore */ }
+"/*"([^*]|(\*+[^*/]))*\*+\/    { /* ignore */ }
 {BLANKS}                       { /* ignore */ }
 
 // --- Palabras reservadas/secciones ---
@@ -55,9 +55,9 @@ STRING   = \"([^\"\\]|\\.)*\"
 "|"                            { return s(sym.OR); }
 "->"                           { return s(sym.ARROW); }
 "="                            { return s(sym.EQ); }
+"</"                           { return s(sym.LT_SLASH); }
 "<"                            { return s(sym.LT); }
 ">"                            { return s(sym.GT); }
-"</"                           { return s(sym.LT_SLASH); }
 "$"                            { return s(sym.LAMBDA); }   // λ -> $
 "#"                            { return s(sym.HASH); }
 

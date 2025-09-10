@@ -1,17 +1,1 @@
-<AFD Nombre="AFD_1">
-N = {S, A, B, C};
-T = {0, 1};
-I = {S};
-A = {B, C};
-Transiciones:
-S -> 1, A | S -> 0, B;
-A -> 1, A | A -> 0, B;
-B -> 0, C | B -> 1, A;
-C -> 1, A;
-
-</AFD>
-
-AFD_1("110");
 verAutomatas();
-desc(AFD_1);
-AFD_1("110");
